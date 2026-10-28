@@ -3,460 +3,632 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Producer-Consumer OS Simulator</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-    
+    <title>Producer-Consumer Simulator</title>
     <style>
+        :root {
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --border-color: #e2e8f0;
+            --text-main: #334155;
+            --text-muted: #64748b;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --neutral: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #fafafa;
-            color: #1a1a1a;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            padding: 2rem;
         }
-        .font-mono {
-            font-family: 'JetBrains Mono', monospace;
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
         }
-        /* Minimalist Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
-        
-        .slot {
-            transition: all 0.15s ease-in-out;
+
+        header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
         }
-        .locked-pulse {
-            animation: pulse-border 1s infinite;
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
-        @keyframes pulse-border {
-            0%, 100% { border-color: #f87171; box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.4); }
-            50% { border-color: #ef4444; box-shadow: 0 0 0 4px rgba(248, 113, 113, 0); }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #0f172a;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        /* Controls Panel */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            align-items: end;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .input-group label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .input-group input, .input-group select {
+            padding: 0.6rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            border-color: var(--primary);
+        }
+
+        button.btn-primary {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.375rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            height: 42px;
+        }
+
+        button.btn-primary:hover:not(:disabled) {
+            background-color: var(--primary-hover);
+        }
+
+        button.btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Live Status Panel */
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .mutex-badge {
+            padding: 0.4rem 0.8rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: white;
+            background-color: var(--success); /* Default Unlocked */
+        }
+
+        .mutex-locked { background-color: var(--danger); }
+        .mutex-na { background-color: var(--neutral); }
+
+        .buffer-container {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+        }
+
+        .buffer-slot {
+            width: 60px;
+            height: 60px;
+            background-color: var(--bg-body);
+            border: 2px dashed var(--border-color);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            position: relative;
+        }
+
+        .buffer-slot.filled {
+            background-color: #eff6ff;
+            border: 2px solid var(--primary);
+            color: var(--primary-hover);
+        }
+
+        .pointer-in, .pointer-out {
+            position: absolute;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            bottom: -25px;
+        }
+
+        .pointer-in {
+            background-color: #dcfce7;
+            color: #166534;
+            left: 0;
+        }
+
+        .pointer-out {
+            background-color: #fce7f3;
+            color: #9d174d;
+            right: 0;
+            bottom: 65px; /* Display above if both are on same slot */
+        }
+
+        .progress-wrapper {
+            margin-top: 1rem;
+        }
+
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0.4rem;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 8px;
+            background-color: var(--bg-body);
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background-color: var(--primary);
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        /* Performance Dashboard */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .metric-box {
+            background-color: var(--bg-body);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .metric-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0f172a;
         }
     </style>
 </head>
-<body class="min-h-screen p-4 sm:p-8 flex flex-col items-center">
+<body>
 
-    <div class="max-w-5xl w-full space-y-6">
-        
-        <!-- Header -->
-        <header class="border-b border-gray-200 pb-4">
-            <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Producer-Consumer OS Simulator</h1>
-            <p class="text-sm text-gray-500 mt-1">Process Synchronization & Lock-Free Queue Analysis</p>
-        </header>
+<div class="container">
+    <header>
+        <h1>Producer-Consumer Simulator</h1>
+    </header>
 
-        <!-- Top Control Bar -->
-        <section class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                <div class="md:col-span-2">
-                    <label class="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">Buffer Size</label>
-                    <input type="number" id="bufferSize" value="5" min="1" max="20" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono">
-                </div>
-                <div class="md:col-span-2">
-                    <label class="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">Total Items</label>
-                    <input type="number" id="totalItems" value="50" min="1" max="500" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono">
-                </div>
-                <div class="md:col-span-5">
-                    <label class="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">Algorithm Mode</label>
-                    <select id="algoMode" onchange="updateModeLabel()" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer font-medium text-gray-800">
-                        <option value="1">1. Traditional (Individual Threads - Semaphores)</option>
-                        <option value="2">2. Thread Pool (Fixed Workers - Semaphores)</option>
-                        <option value="3">3. Lock-Free Queue (Atomic CAS - 2025 NBLFQ Research)</option>
-                    </select>
-                </div>
-                <div class="md:col-span-3 flex gap-2">
-                    <button id="btnStart" onclick="startSimulation()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-lg px-4 py-2 transition shadow-sm">
-                        Start
-                    </button>
-                    <button onclick="resetUI()" class="flex-1 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 font-semibold text-sm rounded-lg px-4 py-2 transition shadow-sm">
-                        Reset
-                    </button>
-                </div>
+    <!-- Controls -->
+    <div class="card">
+        <div class="controls-grid">
+            <div class="input-group">
+                <label for="bufferSize">Buffer Size</label>
+                <input type="number" id="bufferSize" value="5" min="1" max="20">
             </div>
-        </section>
-
-        <!-- Middle Section: Visualizer & Status -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            <!-- Circular Buffer Visualizer -->
-            <section class="lg:col-span-2 bg-white border border-gray-200 rounded-xl p-5 shadow-sm min-h-[220px] flex flex-col">
-                <h2 class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-4">Circular Shared Buffer</h2>
-                
-                <div class="flex-1 flex flex-col justify-center">
-                    <div id="bufferContainer" class="flex flex-wrap gap-3 justify-center items-center">
-                        <!-- Buffer slots dynamically injected here -->
-                    </div>
-                </div>
-
-                <div class="mt-4 flex justify-between items-center text-[10px] font-mono font-semibold text-gray-400">
-                    <span class="flex items-center gap-1.5"><div class="w-2 h-2 bg-green-500 rounded-full"></div> IN (Write) Pointer</span>
-                    <span class="flex items-center gap-1.5"><div class="w-2 h-2 bg-purple-500 rounded-full"></div> OUT (Read) Pointer</span>
-                </div>
-            </section>
-
-            <!-- Live Status Panel -->
-            <section class="lg:col-span-1 bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex flex-col gap-4">
-                <h2 class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Live Status</h2>
-                
-                <!-- Current Mode -->
-                <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Active Mode</div>
-                    <div id="statusMode" class="text-sm font-semibold text-blue-600 leading-snug">Traditional</div>
-                </div>
-
-                <!-- Mutex Status -->
-                <div id="mutexCard" class="bg-gray-50 p-3 rounded-lg border border-gray-100 transition-colors">
-                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Mutex Lock Status</div>
-                    <div id="statusMutex" class="text-sm font-bold font-mono text-green-600">UNLOCKED</div>
-                </div>
-
-                <!-- Progress -->
-                <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 mt-auto">
-                    <div class="flex justify-between items-end mb-1">
-                        <div class="text-[10px] text-gray-500 uppercase tracking-wider">Processed Items</div>
-                        <div class="text-sm font-bold font-mono text-gray-800"><span id="statusProcessed">0</span> / <span id="statusTotal">50</span></div>
-                    </div>
-                    <div class="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                        <div id="progressBar" class="h-full bg-blue-500 transition-all duration-200" style="width: 0%"></div>
-                    </div>
-                </div>
-            </section>
+            <div class="input-group">
+                <label for="totalItems">Total Items</label>
+                <input type="number" id="totalItems" value="100" min="1">
+            </div>
+            <div class="input-group">
+                <label for="algoMode">Algorithm Mode</label>
+                <select id="algoMode">
+                    <option value="1">Mode 1: Traditional (Semaphore + Mutex)</option>
+                    <option value="2">Mode 2: Thread Pool (Semaphore + Mutex)</option>
+                    <option value="3">Mode 3: Lock-Free (NBLFQ / CAS)</option>
+                </select>
+            </div>
+            <button class="btn-primary" id="startBtn">Start Simulation</button>
         </div>
-
-        <!-- Bottom Section: Performance Dashboard -->
-        <section class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-            <h2 class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-4">Performance Dashboard</h2>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div class="p-4 rounded-lg border border-gray-100 bg-gray-50">
-                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Execution Time</div>
-                    <div class="flex items-baseline gap-1">
-                        <span id="metricTime" class="text-2xl font-bold font-mono text-gray-900">0</span>
-                        <span class="text-xs text-gray-500 font-medium">ms</span>
-                    </div>
-                </div>
-
-                <div class="p-4 rounded-lg border border-gray-100 bg-gray-50">
-                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Throughput</div>
-                    <div class="flex items-baseline gap-1">
-                        <span id="metricThroughput" class="text-2xl font-bold font-mono text-blue-600">0.00</span>
-                        <span class="text-xs text-gray-500 font-medium">items/sec</span>
-                    </div>
-                </div>
-
-                <div class="p-4 rounded-lg border border-gray-100 bg-gray-50">
-                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Mutex Contention Events</div>
-                    <div class="flex items-baseline gap-1">
-                        <span id="metricBlocks" class="text-2xl font-bold font-mono text-red-500">0</span>
-                        <span class="text-xs text-gray-500 font-medium">blocks</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
     </div>
 
-    <!-- Simulation Logic -->
-    <script>
-        // State variables
-        let isRunning = false;
-        let simId = 0;
-        let state = {
-            buffer: [],
-            size: 5,
-            totalItems: 50,
-            inPtr: 0,
-            outPtr: 0,
-            count: 0,
-            produced: 0,
-            consumed: 0,
-            mutex: false,
-            blocks: 0,
-            startTime: 0,
-            elapsedTime: 0,
-            mode: 1
-        };
+    <!-- Live Status Panel -->
+    <div class="card">
+        <div class="status-header">
+            <div class="card-title" style="border: none; margin: 0; padding: 0;">Live Status</div>
+            <div id="mutexBadge" class="mutex-badge">UNLOCKED</div>
+        </div>
 
-        // Utility sleep function
-        const sleep = ms => new Promise(r => setTimeout(r, ms));
+        <div class="buffer-container" id="bufferUI">
+            <!-- Slots injected via JS -->
+        </div>
 
-        function updateModeLabel() {
-            const select = document.getElementById('algoMode');
-            let text = select.options[select.selectedIndex].text;
-            // Trim the number prefix for the status card
-            text = text.replace(/^[0-9]\.\s*/, '');
-            document.getElementById('statusMode').innerText = text;
-            
-            // If mode 3, Mutex is N/A
-            if (select.value === "3") {
-                document.getElementById('statusMutex').innerText = "N/A (Lock-Free)";
-                document.getElementById('statusMutex').className = "text-sm font-bold font-mono text-gray-400";
-                document.getElementById('mutexCard').className = "bg-gray-50 p-3 rounded-lg border border-gray-100";
+        <div class="progress-wrapper">
+            <div class="progress-labels">
+                <span>Progress</span>
+                <span id="progressText">0 / 100</span>
+            </div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progressBar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Dashboard -->
+    <div class="card">
+        <div class="card-title">Performance Dashboard</div>
+        <div class="metrics-grid">
+            <div class="metric-box">
+                <div class="metric-title">Execution Time</div>
+                <div class="metric-value"><span id="metricTime">0</span> ms</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-title">Throughput</div>
+                <div class="metric-value"><span id="metricThroughput">0.00</span> /sec</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-title">Contention Events</div>
+                <div class="metric-value"><span id="metricContention">0</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- Async Semaphore Implementation ---
+    class AsyncSemaphore {
+        constructor(count) {
+            this.count = count;
+            this.queue = [];
+        }
+        async wait() {
+            if (this.count > 0) {
+                this.count--;
+                return Promise.resolve();
+            }
+            return new Promise(resolve => this.queue.push(resolve));
+        }
+        signal() {
+            if (this.queue.length > 0) {
+                const resolve = this.queue.shift();
+                resolve();
             } else {
-                document.getElementById('statusMutex').innerText = "UNLOCKED";
-                document.getElementById('statusMutex').className = "text-sm font-bold font-mono text-green-600";
+                this.count++;
             }
         }
+    }
 
-        function initBufferUI() {
-            const container = document.getElementById('bufferContainer');
-            container.innerHTML = '';
-            for (let i = 0; i < state.size; i++) {
-                const slot = document.createElement('div');
-                slot.id = `slot-${i}`;
-                slot.className = "slot w-14 h-14 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-xs font-mono font-bold text-transparent relative";
-                
-                // Pointers indicators (hidden by default)
-                const inDot = document.createElement('div');
-                inDot.id = `in-${i}`;
-                inDot.className = "absolute -top-2 w-3 h-3 bg-green-500 rounded-full hidden shadow-sm border border-white";
-                
-                const outDot = document.createElement('div');
-                outDot.id = `out-${i}`;
-                outDot.className = "absolute -bottom-2 w-3 h-3 bg-purple-500 rounded-full hidden shadow-sm border border-white";
+    // --- State Variables ---
+    let bufferSize = 5;
+    let totalItems = 100;
+    let mode = '1';
+    
+    let buffer = [];
+    let inPtr = 0;
+    let outPtr = 0;
+    let occupiedCount = 0;
+    
+    let itemsProducedScheduled = 0;
+    let itemsConsumedScheduled = 0;
+    let itemsConsumedCompleted = 0;
+    
+    let contentionEvents = 0;
+    
+    let emptySem;
+    let fullSem;
+    let mutexSem;
+    let isRunning = false;
 
-                slot.appendChild(inDot);
-                slot.appendChild(outDot);
-                container.appendChild(slot);
-            }
-            updateBufferUI();
+    // --- Delays Configuration ---
+    const delays = {
+        '1': { spawn_delay: 8, mutex_delay: 5, work_delay: 5, atomic_delay: 0 },
+        '2': { spawn_delay: 0, mutex_delay: 2, work_delay: 3, atomic_delay: 0 },
+        '3': { spawn_delay: 0, mutex_delay: 0, work_delay: 1, atomic_delay: 1 } // Lock-Free
+    };
+
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+    // --- UI Elements ---
+    const bufferUI = document.getElementById('bufferUI');
+    const mutexBadge = document.getElementById('mutexBadge');
+    const progressText = document.getElementById('progressText');
+    const progressBar = document.getElementById('progressBar');
+    const algoModeSelect = document.getElementById('algoMode');
+    const startBtn = document.getElementById('startBtn');
+
+    // --- UI Updates ---
+    algoModeSelect.addEventListener('change', (e) => {
+        if (isRunning) return;
+        if (e.target.value === '3') {
+            setMutexUI('N/A');
+        } else {
+            setMutexUI('UNLOCKED');
+        }
+    });
+
+    function setMutexUI(state) {
+        mutexBadge.className = 'mutex-badge'; // reset
+        if (state === 'LOCKED') {
+            mutexBadge.classList.add('mutex-locked');
+            mutexBadge.textContent = 'LOCKED';
+        } else if (state === 'N/A') {
+            mutexBadge.classList.add('mutex-na');
+            mutexBadge.textContent = 'N/A (Lock-Free)';
+        } else {
+            mutexBadge.textContent = 'UNLOCKED';
+        }
+    }
+
+    function initBufferUI() {
+        bufferUI.innerHTML = '';
+        for (let i = 0; i < bufferSize; i++) {
+            const slot = document.createElement('div');
+            slot.className = 'buffer-slot';
+            slot.id = `slot-${i}`;
+            bufferUI.appendChild(slot);
+        }
+        renderPointers();
+    }
+
+    function updateBufferSlot(index, val) {
+        const slot = document.getElementById(`slot-${index}`);
+        if (val !== null) {
+            slot.classList.add('filled');
+            slot.textContent = val;
+        } else {
+            slot.classList.remove('filled');
+            slot.textContent = '';
+        }
+        renderPointers();
+    }
+
+    function renderPointers() {
+        // Remove existing pointers
+        document.querySelectorAll('.pointer-in, .pointer-out').forEach(el => el.remove());
+        
+        // Add IN pointer
+        const inSlot = document.getElementById(`slot-${inPtr}`);
+        if(inSlot) {
+            const inBadge = document.createElement('div');
+            inBadge.className = 'pointer-in';
+            inBadge.textContent = 'IN';
+            inSlot.appendChild(inBadge);
         }
 
-        function updateBufferUI() {
-            for (let i = 0; i < state.size; i++) {
-                const slot = document.getElementById(`slot-${i}`);
-                const inDot = document.getElementById(`in-${i}`);
-                const outDot = document.getElementById(`out-${i}`);
-                const val = state.buffer[i];
-
-                // Update content and styles based on occupancy
-                if (val) {
-                    slot.className = "slot w-14 h-14 rounded-lg border-2 border-solid border-blue-200 bg-blue-50 flex items-center justify-center text-sm font-mono font-bold text-blue-700 relative shadow-sm";
-                    slot.childNodes[0].nodeValue = val;
-                } else {
-                    slot.className = "slot w-14 h-14 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-xs font-mono font-bold text-transparent relative";
-                    slot.childNodes[0].nodeValue = "";
-                }
-
-                // Update Pointers
-                inDot.style.display = (i === state.inPtr) ? 'block' : 'none';
-                outDot.style.display = (i === state.outPtr) ? 'block' : 'none';
-            }
-
-            // Update Progress
-            document.getElementById('statusProcessed').innerText = state.consumed;
-            document.getElementById('statusTotal').innerText = state.totalItems;
-            const pct = (state.consumed / state.totalItems) * 100;
-            document.getElementById('progressBar').style.width = `${pct}%`;
-
-            // Update Metrics (Real-time)
-            if (isRunning) {
-                const currentElapsed = performance.now() - state.startTime;
-                document.getElementById('metricTime').innerText = Math.round(currentElapsed);
-                document.getElementById('metricThroughput').innerText = (state.consumed / (currentElapsed / 1000)).toFixed(2) || "0.00";
-            }
-            document.getElementById('metricBlocks').innerText = state.blocks;
+        // Add OUT pointer
+        const outSlot = document.getElementById(`slot-${outPtr}`);
+        if(outSlot) {
+            const outBadge = document.createElement('div');
+            outBadge.className = 'pointer-out';
+            outBadge.textContent = 'OUT';
+            outSlot.appendChild(outBadge);
         }
 
-        async function acquireMutex() {
-            if (state.mode === 3) return; // NBLFQ is Lock-Free, bypass mutex entirely.
-            
-            if (state.mutex) {
-                state.blocks++; // Increment contention tracker
-                document.getElementById('metricBlocks').innerText = state.blocks;
-                while (state.mutex) {
-                    // Slight variation in backoff delay to simulate OS scheduler
-                    await sleep(state.mode === 1 ? 2 : 1); 
-                }
+        // Update Progress
+        progressText.textContent = `${itemsConsumedCompleted} / ${totalItems}`;
+        progressBar.style.width = `${(itemsConsumedCompleted / totalItems) * 100}%`;
+    }
+
+    // --- Core Logic ---
+    async function produceItem(item, config, isIndividualThread) {
+        if (isIndividualThread && config.spawn_delay > 0) {
+            await sleep(config.spawn_delay);
+        }
+
+        if (mode === '3') {
+            // Lock-Free Spin Wait
+            while (occupiedCount >= bufferSize) {
+                await sleep(1); 
             }
-            state.mutex = true;
-            
-            // Visual Update for Mutex
-            const mText = document.getElementById('statusMutex');
-            const mCard = document.getElementById('mutexCard');
-            mText.innerText = "LOCKED";
-            mText.className = "text-sm font-bold font-mono text-red-600";
-            mCard.className = "bg-red-50 p-3 rounded-lg border border-red-200 locked-pulse";
-            
-            // Critical Section contention delay
-            await sleep(state.mode === 1 ? 5 : 2); 
+            // Atomic Insertion
+            await sleep(config.atomic_delay);
+            buffer[inPtr] = item;
+            updateBufferSlot(inPtr, `P${item}`);
+            inPtr = (inPtr + 1) % bufferSize;
+            occupiedCount++;
+            await sleep(config.work_delay);
+        } else {
+            // Traditional / Thread Pool with Semaphores & Mutex
+            if (emptySem.count === 0) contentionEvents++;
+            await emptySem.wait();
+
+            if (mutexSem.count === 0) contentionEvents++;
+            await mutexSem.wait();
+            setMutexUI('LOCKED');
+
+            await sleep(config.mutex_delay); // Critical section enter overhead
+            buffer[inPtr] = item;
+            updateBufferSlot(inPtr, `P${item}`);
+            inPtr = (inPtr + 1) % bufferSize;
+            occupiedCount++;
+            await sleep(config.work_delay);
+
+            setMutexUI('UNLOCKED');
+            mutexSem.signal();
+            fullSem.signal();
+        }
+    }
+
+    async function consumeItem(config, isIndividualThread) {
+        if (isIndividualThread && config.spawn_delay > 0) {
+            await sleep(config.spawn_delay);
         }
 
-        function releaseMutex() {
-            if (state.mode === 3) return;
-            state.mutex = false;
-            
-            const mText = document.getElementById('statusMutex');
-            const mCard = document.getElementById('mutexCard');
-            mText.innerText = "UNLOCKED";
-            mText.className = "text-sm font-bold font-mono text-green-600";
-            mCard.className = "bg-gray-50 p-3 rounded-lg border border-gray-100 transition-colors";
-        }
-
-        async function producerLogic(currentSimId) {
-            for (let i = 1; i <= state.totalItems; i++) {
-                if (simId !== currentSimId) return;
-
-                // Mode 1: Individual Thread Spawning Overhead (High delay)
-                if (state.mode === 1) await sleep(8);
-                // Mode 2: Thread Pool (No spawning delay, continuous loop)
-                // Mode 3: Lock-Free (Atomic, lowest delay)
-                if (state.mode === 3) await sleep(1); 
-
-                // Wait if buffer is full (Spin Wait for simplicity in JS)
-                while (state.count >= state.size) {
-                    if (simId !== currentSimId) return;
-                    await sleep(2);
-                }
-
-                await acquireMutex();
-                
-                // Critical Section / Atomic Insert
-                state.buffer[state.inPtr] = `I${i}`;
-                state.inPtr = (state.inPtr + 1) % state.size;
-                state.count++;
-                state.produced++;
-                
-                updateBufferUI();
-                
-                // Artificial work delay inside CS
-                await sleep(state.mode === 1 ? 5 : (state.mode === 2 ? 3 : 1)); 
-                
-                releaseMutex();
+        if (mode === '3') {
+            // Lock-Free Spin Wait
+            while (occupiedCount === 0) {
+                await sleep(1);
             }
+            // Atomic Removal
+            await sleep(config.atomic_delay);
+            buffer[outPtr] = null;
+            updateBufferSlot(outPtr, null);
+            outPtr = (outPtr + 1) % bufferSize;
+            occupiedCount--;
+            itemsConsumedCompleted++;
+            renderPointers();
+            await sleep(config.work_delay);
+        } else {
+            // Traditional / Thread Pool with Semaphores & Mutex
+            if (fullSem.count === 0) contentionEvents++;
+            await fullSem.wait();
+
+            if (mutexSem.count === 0) contentionEvents++;
+            await mutexSem.wait();
+            setMutexUI('LOCKED');
+
+            await sleep(config.mutex_delay); // Critical section enter overhead
+            buffer[outPtr] = null;
+            updateBufferSlot(outPtr, null);
+            outPtr = (outPtr + 1) % bufferSize;
+            occupiedCount--;
+            itemsConsumedCompleted++;
+            renderPointers();
+            await sleep(config.work_delay);
+
+            setMutexUI('UNLOCKED');
+            mutexSem.signal();
+            emptySem.signal();
         }
+    }
 
-        async function consumerLogic(currentSimId) {
-            for (let i = 1; i <= state.totalItems; i++) {
-                if (simId !== currentSimId) return;
+    // Fixed Workers for Mode 2 & 3
+    async function producerWorker(config) {
+        while (true) {
+            if (itemsProducedScheduled >= totalItems) break;
+            let item = ++itemsProducedScheduled;
+            await produceItem(item, config, false);
+        }
+    }
 
-                if (state.mode === 1) await sleep(8);
-                if (state.mode === 3) await sleep(1);
+    async function consumerWorker(config) {
+        while (true) {
+            if (itemsConsumedScheduled >= totalItems) break;
+            itemsConsumedScheduled++;
+            await consumeItem(config, false);
+        }
+    }
 
-                // Wait if buffer is empty
-                while (state.count === 0) {
-                    if (simId !== currentSimId) return;
-                    await sleep(2);
-                }
+    // --- Simulation Runner ---
+    startBtn.addEventListener('click', async () => {
+        // Read Inputs
+        bufferSize = parseInt(document.getElementById('bufferSize').value) || 5;
+        totalItems = parseInt(document.getElementById('totalItems').value) || 100;
+        mode = algoModeSelect.value;
+        const config = delays[mode];
 
-                await acquireMutex();
-                
-                // Critical Section / Atomic Remove
-                state.buffer[state.outPtr] = null;
-                state.outPtr = (state.outPtr + 1) % state.size;
-                state.count--;
-                state.consumed++;
-                
-                updateBufferUI();
-                
-                await sleep(state.mode === 1 ? 5 : (state.mode === 2 ? 3 : 1));
-                
-                releaseMutex();
+        // Reset State
+        isRunning = true;
+        startBtn.disabled = true;
+        buffer = new Array(bufferSize).fill(null);
+        inPtr = 0;
+        outPtr = 0;
+        occupiedCount = 0;
+        itemsProducedScheduled = 0;
+        itemsConsumedScheduled = 0;
+        itemsConsumedCompleted = 0;
+        contentionEvents = 0;
+
+        emptySem = new AsyncSemaphore(bufferSize);
+        fullSem = new AsyncSemaphore(0);
+        mutexSem = new AsyncSemaphore(1);
+
+        document.getElementById('metricTime').textContent = "0";
+        document.getElementById('metricThroughput').textContent = "0.00";
+        document.getElementById('metricContention').textContent = "0";
+        
+        if (mode === '3') setMutexUI('N/A');
+        else setMutexUI('UNLOCKED');
+
+        initBufferUI();
+
+        const startTime = performance.now();
+
+        // Launch Threads
+        const tasks = [];
+        
+        if (mode === '1') {
+            // Mode 1: Individual threads per item
+            for (let i = 1; i <= totalItems; i++) {
+                tasks.push(produceItem(i, config, true));
             }
-        }
-
-        async function startSimulation() {
-            // Read inputs
-            const sizeInput = parseInt(document.getElementById('bufferSize').value);
-            const itemsInput = parseInt(document.getElementById('totalItems').value);
-            const modeInput = parseInt(document.getElementById('algoMode').value);
-
-            if (isNaN(sizeInput) || sizeInput < 1 || isNaN(itemsInput) || itemsInput < 1) {
-                alert("Please enter valid positive numbers for Buffer Size and Total Items.");
-                return;
+            for (let i = 1; i <= totalItems; i++) {
+                tasks.push(consumeItem(config, true));
             }
-
-            // Setup state
-            simId++;
-            const currentSimId = simId;
-            isRunning = true;
-            
-            document.getElementById('btnStart').disabled = true;
-            document.getElementById('btnStart').className = "flex-1 bg-gray-400 text-white font-semibold text-sm rounded-lg px-4 py-2 cursor-not-allowed shadow-sm";
-
-            state = {
-                buffer: new Array(sizeInput).fill(null),
-                size: sizeInput,
-                totalItems: itemsInput,
-                inPtr: 0,
-                outPtr: 0,
-                count: 0,
-                produced: 0,
-                consumed: 0,
-                mutex: false,
-                blocks: 0,
-                startTime: performance.now(),
-                elapsedTime: 0,
-                mode: modeInput
-            };
-
-            updateModeLabel();
-            initBufferUI();
-
-            // Run Producer and Consumer Concurrently
-            await Promise.all([
-                producerLogic(currentSimId),
-                consumerLogic(currentSimId)
-            ]);
-
-            if (simId === currentSimId) {
-                isRunning = false;
-                state.elapsedTime = performance.now() - state.startTime;
-                
-                // Finalize Metrics display
-                document.getElementById('metricTime').innerText = Math.round(state.elapsedTime);
-                document.getElementById('metricThroughput').innerText = (state.totalItems / (state.elapsedTime / 1000)).toFixed(2);
-                
-                // Reset Button
-                const btn = document.getElementById('btnStart');
-                btn.disabled = false;
-                btn.className = "flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-lg px-4 py-2 transition shadow-sm";
-            }
+        } else {
+            // Mode 2 & 3: Fixed Thread Pool (2 Producers, 2 Consumers)
+            tasks.push(producerWorker(config));
+            tasks.push(producerWorker(config));
+            tasks.push(consumerWorker(config));
+            tasks.push(consumerWorker(config));
         }
 
-        function resetUI() {
-            simId++; // Cancels any running loops
-            isRunning = false;
-            
-            document.getElementById('bufferSize').value = "5";
-            document.getElementById('totalItems').value = "50";
-            document.getElementById('algoMode').value = "1";
-            
-            state = {
-                buffer: new Array(5).fill(null),
-                size: 5,
-                totalItems: 50,
-                inPtr: 0,
-                outPtr: 0,
-                count: 0,
-                produced: 0,
-                consumed: 0,
-                mutex: false,
-                blocks: 0,
-                startTime: 0,
-                elapsedTime: 0,
-                mode: 1
-            };
+        // Wait for all to finish
+        await Promise.all(tasks);
 
-            updateModeLabel();
-            initBufferUI();
-            
-            document.getElementById('metricTime').innerText = "0";
-            document.getElementById('metricThroughput').innerText = "0.00";
-            document.getElementById('metricBlocks').innerText = "0";
-            
-            const btn = document.getElementById('btnStart');
-            btn.disabled = false;
-            btn.className = "flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-lg px-4 py-2 transition shadow-sm";
-        }
+        const endTime = performance.now();
+        const execTime = (endTime - startTime).toFixed(0);
+        const throughput = ((totalItems / execTime) * 1000).toFixed(2);
 
-        // Initialize on load
-        window.onload = () => {
-            updateModeLabel();
-            initBufferUI();
-        };
+        // Update Dashboard
+        document.getElementById('metricTime').textContent = execTime;
+        document.getElementById('metricThroughput').textContent = throughput;
+        // Mode 3 must explicitly show 0 contention as per lock-free design
+        document.getElementById('metricContention').textContent = mode === '3' ? 0 : contentionEvents;
 
-    </script>
+        if (mode !== '3') setMutexUI('UNLOCKED');
+        isRunning = false;
+        startBtn.disabled = false;
+    });
+
+    // Initialize UI on load
+    initBufferUI();
+
+</script>
 </body>
 </html>
